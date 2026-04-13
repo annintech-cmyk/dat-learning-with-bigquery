@@ -1,0 +1,53 @@
+name: dbt CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+
+jobs:
+  dbt-run-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # 2. Setup Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      # 3. Install dbt
+      - name: Install dbt
+        run: pip install dbt-bigquery
+
+      # 4. Create profiles.yml (temporary for CI)
+      - name: Setup dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          echo "e_commerce_orders_analysis:
+            target: dev
+            outputs:
+              dev:
+                type: bigquery
+                method: service-account
+                project: ${{ secrets.GCP_PROJECT_ID }}
+                dataset: ${{ secrets.BQ_DATASET }}
+                keyfile: ${{ secrets.GCP_KEYFILE }}
+                threads: 2" > ~/.dbt/profiles.yml
+
+      # 5. dbt debug
+      - name: dbt debug
+        run: dbt debug
+
+      # 6. dbt run
+      - name: dbt run
+        run: dbt run
+
+      # 7. dbt test
+      - name: dbt test
+        run: dbt test
+
